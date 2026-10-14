@@ -9,7 +9,7 @@ server:
   port: 8090
 
 app:
-  version: 0.0.1-SNAPSHOT
+  version: 0.1.0
 
 ---
 # Profil dev : base H2 en mémoire
