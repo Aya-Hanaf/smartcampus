@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: smartcampus
+  profiles:
+    # Profil par défaut : dev (base H2 en mémoire, aucune installation nécessaire)
+    default: dev
+
+server:
+  port: 8090
+
+app:
+  version: 0.0.1-SNAPSHOT
+
+---
+# Profil dev : base H2 en mémoire
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:smartcampus;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: true
+
+---
+# Profil prod : PostgreSQL, identifiants fournis par variables d'environnement
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/smartcampus}
+    username: ${DB_USER:smartcampus}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
