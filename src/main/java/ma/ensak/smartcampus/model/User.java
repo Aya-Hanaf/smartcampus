@@ -1,6 +1,7 @@
 package ma.ensak.smartcampus.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -29,6 +30,8 @@ public class User {
     @Column(nullable = false)
     private int failedLogins = 0;
 
+    private LocalDateTime lockedUntil;
+
     protected User() {
         // requis par JPA
     }
@@ -38,6 +41,11 @@ public class User {
         this.passwordHash = passwordHash;
         this.fullName = fullName;
         this.role = role;
+    }
+
+    /** Vrai si le compte est encore verrouillé à l'instant donné. */
+    public boolean isLockedAt(LocalDateTime now) {
+        return lockedUntil != null && now.isBefore(lockedUntil);
     }
 
     public Long getId() { return id; }
@@ -59,4 +67,7 @@ public class User {
 
     public int getFailedLogins() { return failedLogins; }
     public void setFailedLogins(int failedLogins) { this.failedLogins = failedLogins; }
+
+    public LocalDateTime getLockedUntil() { return lockedUntil; }
+    public void setLockedUntil(LocalDateTime lockedUntil) { this.lockedUntil = lockedUntil; }
 }

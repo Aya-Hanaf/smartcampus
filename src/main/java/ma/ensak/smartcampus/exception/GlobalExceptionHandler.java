@@ -8,12 +8,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    /** SC-13 : compte verrouillé après 3 échecs -> 423 avec un message clair. */
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex) {
+        return build(HttpStatus.LOCKED, ex.getMessage());
     }
 
     @ExceptionHandler(AccountDisabledException.class)

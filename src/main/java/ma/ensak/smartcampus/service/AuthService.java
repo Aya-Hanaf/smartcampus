@@ -1,18 +1,22 @@
 package ma.ensak.smartcampus.service;
 
+import ma.ensak.smartcampus.config.JwtService;
 import ma.ensak.smartcampus.dto.LoginRequest;
 import ma.ensak.smartcampus.dto.LoginResponse;
 import ma.ensak.smartcampus.exception.AccountDisabledException;
+import ma.ensak.smartcampus.exception.AccountLockedException;
 import ma.ensak.smartcampus.exception.InvalidCredentialsException;
 import ma.ensak.smartcampus.model.AuditEvent;
 import ma.ensak.smartcampus.model.AuditEventType;
 import ma.ensak.smartcampus.model.User;
 import ma.ensak.smartcampus.repository.AuditEventRepository;
 import ma.ensak.smartcampus.repository.UserRepository;
-import ma.ensak.smartcampus.config.JwtService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 public class AuthService {
@@ -23,28 +27,44 @@ public class AuthService {
     private final AuditEventRepository auditEventRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final long lockDurationMinutes;
 
     public AuthService(UserRepository userRepository,
                        AuditEventRepository auditEventRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       @Value("${app.security.lock-duration-minutes:15}") long lockDurationMinutes) {
         this.userRepository = userRepository;
         this.auditEventRepository = auditEventRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.lockDurationMinutes = lockDurationMinutes;
     }
 
     /**
      * noRollbackFor est indispensable : sans lui, l'exception annulerait la transaction
-     * et le compteur d'échecs comme l'AuditEvent ne seraient jamais enregistrés.
+     * et ni le compteur d'échecs, ni le verrouillage, ni l'AuditEvent ne seraient enregistrés
+     * (cause du bug SC-13).
      */
-    @Transactional(noRollbackFor = InvalidCredentialsException.class)
+    @Transactional(noRollbackFor = {InvalidCredentialsException.class, AccountLockedException.class})
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmailIgnoreCase(request.email().trim())
                 .orElseThrow(InvalidCredentialsException::new);
 
+        LocalDateTime now = LocalDateTime.now();
+
+        if (user.isLockedAt(now)) {
+            throw new AccountLockedException();
+        }
+
+        if (user.getLockedUntil() != null) {
+            // le verrouillage a expiré : on repart de zéro
+            user.setLockedUntil(null);
+            user.setFailedLogins(0);
+        }
+
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            registerFailedAttempt(user);
+            registerFailedAttempt(user, now);
             throw new InvalidCredentialsException();
         }
 
@@ -53,6 +73,7 @@ public class AuthService {
         }
 
         user.setFailedLogins(0);
+        user.setLockedUntil(null);
         userRepository.save(user);
 
         return new LoginResponse(
@@ -64,16 +85,21 @@ public class AuthService {
                 user.getRole());
     }
 
-    private void registerFailedAttempt(User user) {
+    private void registerFailedAttempt(User user, LocalDateTime now) {
         int failures = user.getFailedLogins() + 1;
         user.setFailedLogins(failures);
-        userRepository.save(user);
 
-        if (failures == MAX_FAILED_ATTEMPTS) {
+        if (failures >= MAX_FAILED_ATTEMPTS) {
+            user.setLockedUntil(now.plusMinutes(lockDurationMinutes));
+            userRepository.save(user);
             auditEventRepository.save(new AuditEvent(
                     user,
                     AuditEventType.LOGIN_FAILED_3_TIMES,
-                    MAX_FAILED_ATTEMPTS + " échecs de connexion consécutifs"));
+                    MAX_FAILED_ATTEMPTS + " échecs de connexion consécutifs : compte verrouillé "
+                            + lockDurationMinutes + " min"));
+            throw new AccountLockedException();
         }
+
+        userRepository.save(user);
     }
 }
