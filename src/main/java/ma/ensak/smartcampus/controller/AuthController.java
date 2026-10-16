@@ -1,0 +1,27 @@
+package ma.ensak.smartcampus.controller;
+
+import jakarta.validation.Valid;
+import ma.ensak.smartcampus.dto.LoginRequest;
+import ma.ensak.smartcampus.dto.LoginResponse;
+import ma.ensak.smartcampus.service.AuthService;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    /** SC-9 : connexion avec e-mail et mot de passe, renvoie un JWT. */
+    @PostMapping("/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
+    }
+}
