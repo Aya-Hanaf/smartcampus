@@ -1,24 +1,7 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
+import { isAuthenticated } from "../api/auth";
 
-export default function Layout() {
-    const navigate = useNavigate();
-
-    const logout = () => {
-        localStorage.removeItem("token");
-        navigate("/login");
-    };
-
-    return (
-        <>
-            <nav className="navbar">
-                <div className="nav-links">
-                    <Link to="/">Home</Link>
-                </div>
-                <button className="logout-btn" onClick={logout}>Logout</button>
-            </nav>
-            <main className="content">
-                <Outlet />
-            </main>
-        </>
-    );
+/** Laisse passer vers les pages protégées seulement si l'utilisateur est connecté. */
+export default function ProtectedRoutes() {
+    return isAuthenticated() ? <Outlet /> : <Navigate to="/login" replace />;
 }
