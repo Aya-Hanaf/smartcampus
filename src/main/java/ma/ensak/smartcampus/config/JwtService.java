@@ -14,11 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 
-/**
- * Génère et vérifie les jetons JWT (expiration 1 h par défaut).
- * La clé vient de la variable d'environnement APP_JWT_SECRET (32 caractères minimum) :
- * aucun secret n'est écrit dans le code ni dans le dépôt.
- */
+
 @Service
 public class JwtService {
 
@@ -40,12 +36,16 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
-        Instant now = Instant.now();
+        return generateToken(user, Instant.now());
+    }
+
+    /** Variante avec une date d'émission choisie (utilisée par les tests pour un jeton expiré). */
+    public String generateToken(User user, Instant issuedAt) {
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("role", user.getRole().name())
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusSeconds(expirationSeconds)))
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(issuedAt.plusSeconds(expirationSeconds)))
                 .signWith(key)
                 .compact();
     }
