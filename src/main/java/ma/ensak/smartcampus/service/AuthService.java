@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ma.ensak.smartcampus.dto.CurrentUserResponse;
 
 import java.time.LocalDateTime;
 
@@ -83,6 +84,13 @@ public class AuthService {
                 user.getEmail(),
                 user.getFullName(),
                 user.getRole());
+    }
+
+    @Transactional(readOnly = true)
+    public CurrentUserResponse currentUser(String email) {
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(InvalidCredentialsException::new);
+        return new CurrentUserResponse(user.getEmail(), user.getFullName(), user.getRole());
     }
 
     private void registerFailedAttempt(User user, LocalDateTime now) {
