@@ -8,7 +8,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -28,9 +27,21 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    /** SC-32 : utilisateur demandé inexistant -> 404. */
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** SC-32 : changement de rôle interdit (ex. sur son propre compte) -> 400. */
+    @ExceptionHandler(InvalidRoleChangeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRoleChange(InvalidRoleChangeException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<ErrorResponse> handleInvalidRequest(Exception ex) {
-        return build(HttpStatus.BAD_REQUEST, "Veuillez saisir un e-mail valide et un mot de passe.");
+        return build(HttpStatus.BAD_REQUEST, "Données invalides : vérifiez les champs envoyés.");
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message) {
