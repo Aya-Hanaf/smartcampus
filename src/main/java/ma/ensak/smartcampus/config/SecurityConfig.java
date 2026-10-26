@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -24,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity   // SC-32 : permet @PreAuthorize("hasRole('TEACHER')") sur les méthodes
 public class SecurityConfig {
 
     @Bean
@@ -48,6 +50,8 @@ public class SecurityConfig {
                                 path.matcher("/error"),
                                 path.matcher("/h2-console/**")
                         ).permitAll()
+                        // SC-32 : toute l'administration est réservée au rôle ADMIN
+                        .requestMatchers(path.matcher("/api/admin/**")).hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // SC-33 : réponses JSON claires au lieu des pages d'erreur par défaut
                 .exceptionHandling(ex -> ex
