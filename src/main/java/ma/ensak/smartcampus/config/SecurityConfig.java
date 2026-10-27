@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import ma.ensak.smartcampus.dto.ErrorResponse;
 import ma.ensak.smartcampus.repository.UserRepository;
+import ma.ensak.smartcampus.service.TokenRevocationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -25,13 +26,14 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity   // SC-32 : permet @PreAuthorize("hasRole('TEACHER')") sur les méthodes
+@EnableMethodSecurity  
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtService jwtService,
                                                    UserDetailsService userDetailsService,
+                                                   TokenRevocationService tokenRevocationService,
                                                    ObjectMapper objectMapper) throws Exception {
         PathPatternRequestMatcher.Builder path = PathPatternRequestMatcher.withDefaults();
 
@@ -52,6 +54,7 @@ public class SecurityConfig {
                         ).permitAll()
                         // SC-32 : toute l'administration est réservée au rôle ADMIN
                         .requestMatchers(path.matcher("/api/admin/**")).hasRole("ADMIN")
+                        // tout le reste, dont /api/auth/logout (SC-10), exige un jeton valide
                         .anyRequest().authenticated())
                 // SC-33 : réponses JSON claires au lieu des pages d'erreur par défaut
                 .exceptionHandling(ex -> ex
@@ -59,8 +62,8 @@ public class SecurityConfig {
                                 HttpStatus.UNAUTHORIZED, "Vous devez être connecté pour accéder à cette ressource."))
                         .accessDeniedHandler((request, response, e) -> writeError(response, objectMapper,
                                 HttpStatus.FORBIDDEN, "Vous n'avez pas les droits nécessaires pour cette action.")))
-                // SC-33 : vérification du jeton JWT sur chaque requête
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService, userDetailsService),
+                // SC-33 + SC-10 : vérification du jeton JWT (et de sa révocation) sur chaque requête
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, userDetailsService, tokenRevocationService),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

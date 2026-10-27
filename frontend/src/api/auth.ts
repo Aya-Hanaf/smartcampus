@@ -50,3 +50,14 @@ export function isAuthenticated(): boolean {
         return false;
     }
 }
+/** SC-10 : déconnexion sécurisée. Le jeton est révoqué côté serveur, puis effacé du navigateur. */
+export async function logout(): Promise<void> {
+    try {
+        await api.post("/auth/logout");
+    } catch {
+        // jeton déjà expiré ou serveur injoignable : on déconnecte quand même localement
+    } finally {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+    }
+}
