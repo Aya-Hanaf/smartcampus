@@ -13,7 +13,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
-
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -42,6 +42,7 @@ public class JwtService {
     /** Variante avec une date d'émission choisie (utilisée par les tests pour un jeton expiré). */
     public String generateToken(User user, Instant issuedAt) {
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())   // SC-10 : identifiant unique, pour pouvoir révoquer CE jeton
                 .subject(user.getEmail())
                 .claim("role", user.getRole().name())
                 .issuedAt(Date.from(issuedAt))
